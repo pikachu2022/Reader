@@ -350,4 +350,161 @@
         }
 
         function closeSettingsModal() {
-            document.getElementById('settingsMod
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            applyTheme(theme);
+            saveData();
+        }
+
+        function applyTheme(theme) {
+            // 移除所有舊的主題類別
+            document.body.classList.remove('theme-amber', 'theme-white', 'theme-green', 'theme-dark');
+            // 加入新的主題類別
+            document.body.classList.add(`theme-${theme}`);
+        }
+
+        function setFontSize(size) {
+            currentFontSize = size;
+            applyFontSize(size);
+            saveData();
+        }
+
+        function applyFontSize(size) {
+            const readerContent = document.getElementById('readerContent');
+            readerContent.classList.remove('font-size-sm', 'font-size-md', 'font-size-lg', 'font-size-xl');
+            readerContent.classList.add(`font-size-${size}`);
+        }
+
+        function editCurrentNote() {
+            const id = currentReadingId;
+            backToHome();
+            openNoteModal(id);
+        }
+
+        function deleteCurrentNote() {
+            if (confirm('確定要刪除這本書嗎？')) {
+                notes = notes.filter(n => n.id !== currentReadingId);
+                saveData();
+                backToHome();
+            }
+        }
+
+        function handleSearch(val) {
+            searchQuery = val.trim();
+            renderNotes();
+        }
+
+        function openNoteModal(id = null) {
+            const select = document.getElementById('noteFolderSelect');
+            select.innerHTML = '';
+            folders.filter(f => f !== '全部藏書').forEach(f => {
+                const opt = document.createElement('option');
+                opt.value = f;
+                opt.innerText = f;
+                select.appendChild(opt);
+            });
+
+            if (id) {
+                const note = notes.find(n => n.id === id);
+                if (note) {
+                    document.getElementById('noteModalTitle').innerText = '編輯藏書';
+                    document.getElementById('noteId').value = note.id;
+                    document.getElementById('noteTitleInput').value = note.title;
+                    document.getElementById('noteFolderSelect').value = note.folder;
+                    document.getElementById('noteContentInput').value = note.content;
+                }
+            } else {
+                document.getElementById('noteModalTitle').innerText = '新增藏書';
+                document.getElementById('noteId').value = '';
+                document.getElementById('noteTitleInput').value = '';
+                document.getElementById('noteContentInput').value = '';
+                if(currentFolder !== '全部藏書') {
+                    document.getElementById('noteFolderSelect').value = currentFolder;
+                }
+            }
+            document.getElementById('noteModal').classList.remove('hidden');
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteModal').classList.add('hidden');
+        }
+
+        function saveNote() {
+            const id = document.getElementById('noteId').value;
+            const title = document.getElementById('noteTitleInput').value.trim();
+            const folder = document.getElementById('noteFolderSelect').value;
+            const content = document.getElementById('noteContentInput').value.trim();
+
+            if (!title) {
+                showToast('請輸入書名或標題');
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            if (id) {
+                const note = notes.find(n => n.id == id);
+                if (note) {
+                    note.title = title;
+                    note.folder = folder;
+                    note.content = content;
+                    note.date = today;
+                }
+            } else {
+                const newNote = {
+                    id: Date.now(),
+                    title,
+                    folder,
+                    content,
+                    date: today
+                };
+                notes.push(newNote);
+            }
+
+            saveData();
+            closeNoteModal();
+            renderNotes();
+        }
+
+        function openFolderModal() {
+            document.getElementById('folderNameInput').value = '';
+            document.getElementById('folderModal').classList.remove('hidden');
+        }
+
+        function closeFolderModal() {
+            document.getElementById('folderModal').classList.add('hidden');
+        }
+
+        function saveFolder() {
+            const name = document.getElementById('folderNameInput').value.trim();
+            if (!name) {
+                showToast('請輸入資料夾名稱');
+                return;
+            }
+            if (folders.includes(name)) {
+                showToast('資料夾名稱已存在');
+                return;
+            }
+
+            folders.push(name);
+            saveData();
+            closeFolderModal();
+            renderFolders();
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+    </script>
+</body>
+</html>
