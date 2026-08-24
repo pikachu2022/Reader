@@ -1,16 +1,21 @@
 {
-  "name": "閱讀模擬器",
-  "short_name": "閱",
+  "name": "書庫",
+  "short_name": "書庫",
   "description": "A recipe application for creating awesome recipes",
   "start_url": "/Reader/",
   "scope": "/Reader/",
+  "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#ffffff",
-  "display": "standalone",
   "icons": [
     {
       "src": "./icon.png",
       "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
