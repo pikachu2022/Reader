@@ -6,7 +6,7 @@
     <title>我的數位圖書館</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="manifest" href="./manifest.json"/>
+    <link rel="manifest" href="./manifest.json">
     <style>
         /* 閱讀器主題樣式定義 */
         body.theme-amber { background-color: #fdfbf7; color: #433422; }
@@ -46,10 +46,16 @@
                     <i class="fa-solid fa-book-bookmark text-xl"></i>
                     <h1 class="text-lg font-bold tracking-wide">數位圖書館</h1>
                 </div>
-                <button onclick="openFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 transition">
-                    <i class="fa-solid fa-folder-plus"></i>
-                    <span>新增資料夾</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 transition">
+                        <i class="fa-solid fa-folder-plus"></i>
+                        <span>新增資料夾</span>
+                    </button>
+                    <button onclick="openManageFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 transition" title="管理資料夾">
+                        <i class="fa-solid fa-folder-minus"></i>
+                        <span>管理</span>
+                    </button>
+                </div>
             </div>
             <div class="px-4 pb-3">
                 <div class="relative">
@@ -202,7 +208,26 @@
         </div>
     </div>
 
-    <!-- 訊息對話框 -->
+
+    <!-- ==================== 彈出視窗：管理資料夾 (刪除) ==================== -->
+    <div id="manageFolderModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl p-5 shadow-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                    <i class="fa-solid fa-folder-minus text-indigo-600"></i>
+                    <span>管理資料夾分類</span>
+                </h3>
+                <button onclick="closeManageFolderModal()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="manageFolderList" class="space-y-2 overflow-y-auto flex-1 mb-4 pr-1">
+                <!-- 動態載入資料夾列表供刪除 -->
+            </div>
+            <button onclick="closeManageFolderModal()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl text-sm font-semibold transition">關閉</button>
+        </div>
+    </div>
+
+
+    <!-- 訊息對話框 (保留僅用於錯誤提示如未輸入名稱) -->
     <div id="customModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xs rounded-2xl p-5 text-center shadow-xl">
             <p id="customModalMessage" class="text-slate-700 text-sm mb-4">提示訊息</p>
@@ -212,15 +237,14 @@
 
     <script>
         // 註冊 Service Worker
-        if ('serviceWorker' in navigator) {
-          window.addEventListener('load', () => {
-            // 注意：因為你的專案在 /Reader/ 底下，路徑要寫對
-            navigator.serviceWorker.register('/Reader/sw.js')
-              .then(reg => console.log('Service Worker 註冊成功：', reg.scope))
-              .catch(err => console.log('Service Worker 註冊失敗：', err));
-          });
-        }
-        
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // 注意：因為你的專案在 /Reader/ 底下，路徑要寫對
+          navigator.serviceWorker.register('/Reader/sw.js')
+            .then(reg => console.log('Service Worker 註冊成功：', reg.scope))
+            .catch(err => console.log('Service Worker 註冊失敗：', err));
+        });
+      }
         let folders = JSON.parse(localStorage.getItem('lib_folders')) || ['全部藏書', '預設小說'];
         let notes = JSON.parse(localStorage.getItem('lib_notes')) || [
             { id: 1, title: '第一章：起點', folder: '預設小說', content: '這是第一章的內容。\n\n主角站在圖書館的門口，微風輕輕吹拂。這是一個充滿未知的世界...', date: '2026-06-01' }
@@ -360,9 +384,7 @@
         }
 
         function applyTheme(theme) {
-            // 移除所有舊的主題類別
             document.body.classList.remove('theme-amber', 'theme-white', 'theme-green', 'theme-dark');
-            // 加入新的主題類別
             document.body.classList.add(`theme-${theme}`);
         }
 
@@ -385,11 +407,9 @@
         }
 
         function deleteCurrentNote() {
-            if (confirm('確定要刪除這本書嗎？')) {
-                notes = notes.filter(n => n.id !== currentReadingId);
-                saveData();
-                backToHome();
-            }
+            notes = notes.filter(n => n.id !== currentReadingId);
+            saveData();
+            backToHome();
         }
 
         function handleSearch(val) {
@@ -495,6 +515,61 @@
             renderFolders();
         }
 
+        function openManageFolderModal() {
+            const listContainer = document.getElementById('manageFolderList');
+            listContainer.innerHTML = '';
+
+            folders.forEach(folder => {
+                if (folder === '全部藏書') return;
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl';
+                
+                const span = document.createElement('span');
+                span.className = 'text-sm font-medium text-slate-700 flex items-center space-x-2';
+                span.innerHTML = `<i class="fa-solid fa-folder text-indigo-500"></i>`;
+                span.appendChild(document.createTextNode(folder));
+
+                const btn = document.createElement('button');
+                btn.className = 'bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1';
+                btn.innerHTML = `<i class="fa-solid fa-trash"></i><span>刪除</span>`;
+                btn.onclick = () => deleteFolder(folder);
+
+                row.appendChild(span);
+                row.appendChild(btn);
+                listContainer.appendChild(row);
+            });
+
+            if (listContainer.innerHTML === '') {
+                listContainer.innerHTML = `<p class="text-center text-slate-400 text-xs py-4">目前沒有可刪除的自訂資料夾</p>`;
+            }
+
+            document.getElementById('manageFolderModal').classList.remove('hidden');
+        }
+
+        function closeManageFolderModal() {
+            document.getElementById('manageFolderModal').classList.add('hidden');
+        }
+
+        function deleteFolder(folderName) {
+            notes.forEach(note => {
+                if (note.folder === folderName) {
+                    note.folder = '預設小說';
+                }
+            });
+
+            folders = folders.filter(f => f !== folderName);
+
+            if (currentFolder === folderName) {
+                currentFolder = '全部藏書';
+            }
+
+            saveData();
+            renderFolders();
+            renderNotes();
+            openManageFolderModal();
+        }
+
         function escapeHtml(text) {
             const map = {
                 '&': '&amp;',
@@ -508,3 +583,4 @@
     </script>
 </body>
 </html>
+
