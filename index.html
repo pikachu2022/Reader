@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>我的數位圖書館</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="./manifest.json">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* 閱讀器主題樣式定義 */
@@ -210,6 +211,15 @@
     </div>
 
     <script>
+        // 註冊 Service Worker
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          // 注意：因為你的專案在 /Reader/ 底下，路徑要寫對
+          navigator.serviceWorker.register('/Reader/sw.js')
+            .then(reg => console.log('Service Worker 註冊成功：', reg.scope))
+            .catch(err => console.log('Service Worker 註冊失敗：', err));
+        });
+      }
         let folders = JSON.parse(localStorage.getItem('lib_folders')) || ['全部藏書', '預設小說'];
         let notes = JSON.parse(localStorage.getItem('lib_notes')) || [
             { id: 1, title: '第一章：起點', folder: '預設小說', content: '這是第一章的內容。\n\n主角站在圖書館的門口，微風輕輕吹拂。這是一個充滿未知的世界...', date: '2026-06-01' }
