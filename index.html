@@ -46,14 +46,18 @@
                     <i class="fa-solid fa-book-bookmark text-xl"></i>
                     <h1 class="text-lg font-bold tracking-wide">數位圖書館</h1>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button onclick="openFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 transition">
+                <div class="flex items-center space-x-1.5 sm:space-x-2">
+                    <button onclick="openFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-2.5 py-1.5 rounded-lg flex items-center space-x-1 transition">
                         <i class="fa-solid fa-folder-plus"></i>
-                        <span>新增資料夾</span>
+                        <span class="hidden sm:inline">新增資料夾</span>
                     </button>
-                    <button onclick="openManageFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 transition" title="管理資料夾">
+                    <button onclick="openManageFolderModal()" class="bg-indigo-700 hover:bg-indigo-800 text-xs px-2.5 py-1.5 rounded-lg flex items-center space-x-1 transition" title="管理資料夾">
                         <i class="fa-solid fa-folder-minus"></i>
-                        <span>管理</span>
+                        <span class="hidden sm:inline">管理</span>
+                    </button>
+                    <button onclick="openBackupModal()" class="bg-indigo-500 hover:bg-indigo-700 text-xs px-2.5 py-1.5 rounded-lg flex items-center space-x-1 transition" title="備份與匯入">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                        <span>備份/匯入</span>
                     </button>
                 </div>
             </div>
@@ -227,6 +231,44 @@
     </div>
 
 
+    <!-- ==================== 彈出視窗：資料備份與匯入 ==================== -->
+    <div id="backupModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white text-slate-800 w-full max-w-sm rounded-2xl p-5 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-lg font-bold flex items-center space-x-2">
+                    <i class="fa-solid fa-floppy-disk text-indigo-600"></i>
+                    <span>資料與設定備份</span>
+                </h3>
+                <button onclick="closeBackupModal()" class="text-slate-400 hover:text-slate-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">
+                您可以將現有的藏書、分類資料夾及閱讀設定匯出為 JSON 備份檔，並在其他裝置或瀏覽器上匯入使用。
+            </p>
+
+            <div class="space-y-3 pt-1">
+                <!-- 匯出按鈕 -->
+                <button onclick="exportData()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 transition">
+                    <i class="fa-solid fa-file-export"></i>
+                    <span>匯出備份檔案 (.json)</span>
+                </button>
+
+                <!-- 匯入按鈕 -->
+                <button onclick="triggerImport()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 py-2.5 px-4 rounded-xl text-sm font-semibold flex items-center justify-center space-x-2 transition">
+                    <i class="fa-solid fa-file-import"></i>
+                    <span>匯入備份檔案</span>
+                </button>
+                <!-- 隱藏的檔案選擇器 -->
+                <input type="file" id="importFileInput" accept=".json" onchange="handleImportFile(event)" class="hidden">
+            </div>
+
+            <button onclick="closeBackupModal()" class="w-full bg-slate-50 hover:bg-slate-100 text-slate-500 py-2 rounded-xl text-xs font-medium transition mt-2">
+                關閉
+            </button>
+        </div>
+    </div>
+
+
     <!-- 訊息對話框 (保留僅用於錯誤提示如未輸入名稱) -->
     <div id="customModal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-xs rounded-2xl p-5 text-center shadow-xl">
@@ -237,14 +279,14 @@
 
     <script>
         // 註冊 Service Worker
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          // 注意：因為你的專案在 /Reader/ 底下，路徑要寫對
-          navigator.serviceWorker.register('/Reader/sw.js')
-            .then(reg => console.log('Service Worker 註冊成功：', reg.scope))
-            .catch(err => console.log('Service Worker 註冊失敗：', err));
-        });
-      }
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/Reader/sw.js')
+                    .then(reg => console.log('Service Worker 註冊成功：', reg.scope))
+                    .catch(err => console.log('Service Worker 註冊失敗：', err));
+            });
+        }
+
         let folders = JSON.parse(localStorage.getItem('lib_folders')) || ['全部藏書', '預設小說'];
         let notes = JSON.parse(localStorage.getItem('lib_notes')) || [
             { id: 1, title: '第一章：起點', folder: '預設小說', content: '這是第一章的內容。\n\n主角站在圖書館的門口，微風輕輕吹拂。這是一個充滿未知的世界...', date: '2026-06-01' }
@@ -570,6 +612,93 @@
             openManageFolderModal();
         }
 
+        /* ==================== 資料備份與匯入/匯出功能 ==================== */
+        function openBackupModal() {
+            document.getElementById('backupModal').classList.remove('hidden');
+        }
+
+        function closeBackupModal() {
+            document.getElementById('backupModal').classList.add('hidden');
+        }
+
+        // 匯出資料為 JSON 檔案
+        function exportData() {
+            const exportDataObj = {
+                version: "1.0",
+                exportDate: new Date().toISOString(),
+                folders: folders,
+                notes: notes,
+                theme: currentTheme,
+                fontSize: currentFontSize
+            };
+
+            const jsonString = JSON.stringify(exportDataObj, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const dateStr = new Date().toISOString().slice(0, 10);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `digital_library_backup_${dateStr}.json`;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('備份檔案匯出成功！');
+        }
+
+        // 觸發檔案選擇器
+        function triggerImport() {
+            document.getElementById('importFileInput').click();
+        }
+
+        // 處理匯入 JSON 檔案
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    if (!data || typeof data !== 'object') {
+                        throw new Error('檔案格式無效');
+                    }
+
+                    if (Array.isArray(data.folders)) {
+                        folders = data.folders;
+                    }
+                    if (Array.isArray(data.notes)) {
+                        notes = data.notes;
+                    }
+                    if (data.theme) {
+                        currentTheme = data.theme;
+                    }
+                    if (data.fontSize) {
+                        currentFontSize = data.fontSize;
+                    }
+
+                    saveData();
+                    applyTheme(currentTheme);
+                    applyFontSize(currentFontSize);
+                    currentFolder = '全部藏書';
+                    renderFolders();
+                    renderNotes();
+
+                    closeBackupModal();
+                    showToast('資料與設定已成功匯入！');
+                } catch (err) {
+                    showToast('匯入失敗：請確認選取的檔案是否為正確的 JSON 備份檔');
+                }
+                event.target.value = ''; // 重置 file input
+            };
+
+            reader.readAsText(file);
+        }
+
         function escapeHtml(text) {
             const map = {
                 '&': '&amp;',
@@ -583,4 +712,3 @@
     </script>
 </body>
 </html>
-
